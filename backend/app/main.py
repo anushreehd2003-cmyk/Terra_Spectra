@@ -24,7 +24,7 @@ app.add_middleware(
 
 # Root health check endpoint
 @app.get("/health")
-async def health_check():
+def health_check():
     return {
         "status": "healthy",
         "service": settings.PROJECT_NAME,

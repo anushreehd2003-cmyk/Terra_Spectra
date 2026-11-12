@@ -1,0 +1,52 @@
+/**
+ * API Service Client for TerraSpectra Backend.
+ */
+
+import axios from 'axios';
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
+
+const apiClient = axios.create({
+  baseURL: API_BASE_URL,
+  timeout: 10000,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+export const apiService = {
+  async getStatus() {
+    const response = await apiClient.get('/status');
+    return response.data;
+  },
+
+  async getSpectralSignatures() {
+    const response = await apiClient.get('/spectral/signatures');
+    return response.data;
+  },
+
+  async getWavelengths() {
+    const response = await apiClient.get('/spectral/wavelengths');
+    return response.data;
+  },
+
+  async getFarmGeoJSON() {
+    const response = await apiClient.get('/farm/geojson');
+    return response.data;
+  },
+
+  async getPCASummary() {
+    const response = await apiClient.get('/pipeline/pca-summary');
+    return response.data;
+  },
+
+  async triggerSimulation(seed = null, foci = 3) {
+    const response = await apiClient.post('/pipeline/simulate', null, {
+      params: { seed, foci },
+    });
+    return response.data;
+  },
+};
+
+export default apiService;
+
