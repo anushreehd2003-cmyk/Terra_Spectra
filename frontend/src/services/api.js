@@ -8,7 +8,7 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 10000,
+  timeout: 15000,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -46,7 +46,24 @@ export const apiService = {
     });
     return response.data;
   },
+
+  // 3D-CNN Model API
+  async getModelArchitecture() {
+    const response = await apiClient.get('/model/architecture');
+    return response.data;
+  },
+
+  async trainStep(epochs = 1) {
+    const response = await apiClient.post('/model/train-step', null, {
+      params: { epochs },
+    });
+    return response.data;
+  },
+
+  async predictSceneRisk() {
+    const response = await apiClient.post('/model/predict-scene');
+    return response.data;
+  },
 };
 
 export default apiService;
-

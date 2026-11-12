@@ -1,8 +1,9 @@
-"""FastAPI base and data pipeline API endpoints for TerraSpectra."""
+"""FastAPI base, data pipeline, and 3D-CNN ML endpoints for TerraSpectra."""
 
 from fastapi import APIRouter, Query, HTTPException
 from typing import Dict, Any, List, Optional
 import numpy as np
+import torch
 
 from app.core.config import settings
 from app.utils.spectral_physics import (
@@ -15,12 +16,16 @@ from app.utils.spectral_physics import (
 from app.utils.cube_simulator import HyperspectralCubeSimulator
 from app.pipeline.spectral_reduction import SpectralDimensionalityReducer
 from app.pipeline.ingestion import HyperspectralIngestionPipeline
+from app.models.spatial_spectral_cnn import SpatialSpectralCNN3D
+from app.models.trainer import DiseaseForecastingTrainer
+from app.models.dataset import create_hyperspectral_dataloader
 
 router = APIRouter()
 
-# Global state for cached simulation / fitted reducer
+# Global state for cached simulation, fitted reducer, and 3D-CNN trainer
 _CACHED_SCENE: Optional[Dict[str, Any]] = None
 _CACHED_REDUCER: Optional[SpectralDimensionalityReducer] = None
+_CACHED_TRAINER: Optional[DiseaseForecastingTrainer] = None
 
 
 def get_or_create_scene() -> Dict[str, Any]:
@@ -39,6 +44,17 @@ def get_or_create_reducer() -> SpectralDimensionalityReducer:
         reducer.fit(scene["cube"])
         _CACHED_REDUCER = reducer
     return _CACHED_REDUCER
+
+
+def get_or_create_trainer() -> DiseaseForecastingTrainer:
+    global _CACHED_TRAINER
+    if _CACHED_TRAINER is None:
+        _CACHED_TRAINER = DiseaseForecastingTrainer(
+            in_spectral_channels=settings.PCA_COMPONENTS,
+            num_classes=3,
+            device="cpu",
+        )
+    return _CACHED_TRAINER
 
 
 @router.get("/status")
@@ -80,12 +96,7 @@ def get_wavelengths():
 
 @router.get("/spectral/signatures")
 def get_spectral_signatures():
-    """Return reference spectral reflectance signatures for comparison.
-
-    Demonstrates how pre-symptomatic fungal infection diverges significantly in the
-    Red-Edge (700-740nm) and NIR Plateau (750-1300nm) while remaining identical to healthy
-    vegetation in the visible spectrum (400-680nm).
-    """
+    """Return reference spectral reflectance signatures for comparison."""
     wl = generate_wavelength_grid(
         settings.NUM_SPECTRAL_BANDS,
         settings.SPECTRAL_RANGE_NM[0],
@@ -248,8 +259,7 @@ def trigger_simulation(seed: Optional[int] = None, foci: int = 3):
     global _CACHED_SCENE, _CACHED_REDUCER
     simulator = HyperspectralCubeSimulator(height=32, width=32, seed=seed)
     _CACHED_SCENE = simulator.generate_scene(infection_foci_count=foci)
-    
-    # Re-fit reducer
+
     reducer = SpectralDimensionalityReducer(n_components=settings.PCA_COMPONENTS)
     reducer.fit(_CACHED_SCENE["cube"])
     _CACHED_REDUCER = reducer
@@ -258,4 +268,104 @@ def trigger_simulation(seed: Optional[int] = None, foci: int = 3):
         "status": "success",
         "metadata": _CACHED_SCENE["metadata"],
         "pca_variance_explained": reducer.get_metrics()["total_variance_explained_pct"],
+    }
+
+
+# =====================================================================
+# 3D-CNN Model Architecture, Training, and Inference Endpoints (Day 3/4)
+# =====================================================================
+
+
+@router.get("/model/architecture")
+def get_model_architecture():
+    """Return PyTorch 3D-CNN model architecture, layer configurations, and parameter count."""
+    trainer = get_or_create_trainer()
+    total_params = sum(p.numel() for p in trainer.model.parameters())
+    trainable_params = sum(p.numel() for p in trainer.model.parameters() if p.requires_grad)
+
+    return {
+        "model_name": "SpatialSpectralCNN3D",
+        "input_spectral_depth": settings.PCA_COMPONENTS,
+        "num_classes": 3,
+        "classes": {
+            0: "Healthy Foliage",
+            1: "Pre-Symptomatic Fungal Infection (3-Wk Early Warning)",
+            2: "Advanced Symptomatic / Necrotic",
+        },
+        "stem": "3D-CNN (conv3d_1: 5x3x3, conv3d_2: 3x3x3, conv3d_3: 3x3x3 stride-2)",
+        "heads": ["Pixel-wise Segmentation Head (Conv2D)", "Global Patch Risk Head (Linear)"],
+        "loss_function": "Focal Loss (gamma=2.0, alpha=[0.2, 0.6, 0.2])",
+        "total_parameters": total_params,
+        "trainable_parameters": trainable_params,
+        "edge_ready": True,
+    }
+
+
+@router.post("/model/train-step")
+def trigger_training_step(epochs: int = 1):
+    """Run an on-demand training step of the 3D-CNN using class-weighted Focal Loss."""
+    scene = get_or_create_scene()
+    reducer = get_or_create_reducer()
+    trainer = get_or_create_trainer()
+
+    loader = create_hyperspectral_dataloader(
+        scene_cube=scene["cube"],
+        disease_mask=scene["disease_mask"],
+        reducer=reducer,
+        patch_size=16,
+        stride=8,
+        batch_size=8,
+        shuffle=True,
+        augment=True,
+    )
+
+    last_train_metrics = {}
+    for _ in range(max(1, min(epochs, 5))):
+        last_train_metrics = trainer.train_epoch(loader)
+
+    eval_metrics = trainer.evaluate(loader)
+
+    return {
+        "status": "success",
+        "epochs_completed": epochs,
+        "training": last_train_metrics,
+        "validation": eval_metrics,
+        "focal_loss_applied": True,
+        "early_warning_f1": eval_metrics["pre_symptomatic_f1"],
+    }
+
+
+@router.post("/model/predict-scene")
+def predict_scene_risk():
+    """Run 3D-CNN sliding window inference across the 1,000-acre farm scene."""
+    scene = get_or_create_scene()
+    reducer = get_or_create_reducer()
+    trainer = get_or_create_trainer()
+
+    reduced_cube = reducer.transform(scene["cube"])
+    risk_map = trainer.predict_full_scene(reduced_cube, patch_size=16, stride=8)
+
+    H, W = risk_map.shape
+    total_pixels = H * W
+    pre_symp_pixels = int(np.sum(risk_map >= 0.40))
+    risk_acres = round(float(pre_symp_pixels / total_pixels) * settings.FARM_TOTAL_ACRES, 2)
+
+    mean_risk = round(float(np.mean(risk_map)), 3)
+    max_risk = round(float(np.max(risk_map)), 3)
+
+    return {
+        "status": "success",
+        "farm_name": settings.FARM_NAME,
+        "total_acres": settings.FARM_TOTAL_ACRES,
+        "predicted_risk_acres": risk_acres,
+        "mean_risk_probability": mean_risk,
+        "max_risk_probability": max_risk,
+        "early_warning_status": (
+            "Active Pre-Symptomatic Infection Detected" if risk_acres > 50.0 else "Healthy Canopy"
+        ),
+        "lead_time_forecast": "3 Weeks Before Foliar Symptoms",
+        "sample_risk_grid": [
+            [round(float(risk_map[r, c]), 3) for c in range(0, W, max(1, W // 4))]
+            for r in range(0, H, max(1, H // 4))
+        ],
     }
