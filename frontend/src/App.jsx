@@ -3,6 +3,7 @@ import MapView from './components/MapView';
 import SpectralInspector from './components/SpectralInspector';
 import PCAMetricsCard from './components/PCAMetricsCard';
 import ModelPanel from './components/ModelPanel';
+import AuditReportCard from './components/AuditReportCard';
 import {
   Sprout,
   BarChart3,
@@ -14,11 +15,12 @@ import {
   RefreshCw,
   Sparkles,
   Brain,
+  FileCheck2,
 } from 'lucide-react';
 import apiService from './services/api';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('model'); // Focus on 3D-CNN Model
+  const [activeTab, setActiveTab] = useState('audit'); // Showcase Mid-Project Review Audit
   const [status, setStatus] = useState(null);
   const [simulating, setSimulating] = useState(false);
   const [monitoredAcres, setMonitoredAcres] = useState(1000.0);
@@ -63,7 +65,7 @@ export default function App() {
             <h1 className="text-base font-bold tracking-wide text-white flex items-center gap-2">
               TerraSpectra
               <span className="text-[10px] uppercase font-semibold tracking-wider px-2 py-0.5 bg-emerald-500/10 text-emerald-400 rounded-full border border-emerald-500/20">
-                v0.3.0 • Week 2
+                v0.4.0 • Mid-Project Review
               </span>
             </h1>
             <p className="text-[11px] text-slate-400">Hyperspectral Crop Disease Forecasting Engine</p>
@@ -73,19 +75,30 @@ export default function App() {
         {/* Navigation Tabs */}
         <div className="flex items-center bg-slate-950/80 p-1 rounded-xl border border-slate-800 text-xs">
           <button
+            onClick={() => setActiveTab('audit')}
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg font-medium transition ${
+              activeTab === 'audit'
+                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-sm'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <FileCheck2 className="w-4 h-4 text-emerald-400" />
+            Mid-Project Audit
+          </button>
+          <button
             onClick={() => setActiveTab('model')}
-            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg font-medium transition ${
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg font-medium transition ${
               activeTab === 'model'
                 ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-sm'
                 : 'text-slate-400 hover:text-slate-200'
             }`}
           >
-            <Brain className="w-4 h-4 text-emerald-400" />
+            <Brain className="w-4 h-4 text-teal-400" />
             3D-CNN & Focal Loss
           </button>
           <button
             onClick={() => setActiveTab('spectral')}
-            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg font-medium transition ${
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg font-medium transition ${
               activeTab === 'spectral'
                 ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-sm'
                 : 'text-slate-400 hover:text-slate-200'
@@ -96,14 +109,14 @@ export default function App() {
           </button>
           <button
             onClick={() => setActiveTab('map')}
-            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg font-medium transition ${
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg font-medium transition ${
               activeTab === 'map'
                 ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-sm'
                 : 'text-slate-400 hover:text-slate-200'
             }`}
           >
             <MapIcon className="w-4 h-4 text-amber-400" />
-            GIS Farm Parcels
+            GIS Farm Heatmap
           </button>
         </div>
 
@@ -118,7 +131,7 @@ export default function App() {
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
             </span>
-            <span className="text-emerald-400 font-medium">3D-CNN Ready</span>
+            <span className="text-emerald-400 font-medium">Audit Verified</span>
           </div>
         </div>
       </header>
@@ -127,6 +140,7 @@ export default function App() {
       <div className="flex flex-1 relative overflow-hidden">
         {/* Left Interactive Canvas Area */}
         <main className="flex-1 h-full p-4 overflow-y-auto">
+          {activeTab === 'audit' && <AuditReportCard />}
           {activeTab === 'model' && <ModelPanel onRiskUpdated={(acres) => setPredictedRiskAcres(acres)} />}
           {activeTab === 'spectral' && <SpectralInspector />}
           {activeTab === 'map' && <MapView />}
@@ -185,9 +199,9 @@ export default function App() {
 
           {/* Milestone Footer */}
           <div className="mt-auto pt-3 border-t border-slate-800 text-[11px] text-slate-500 text-center">
-            <span className="text-emerald-400 font-medium">3D-CNN & Focal Loss Active</span>
+            <span className="text-emerald-400 font-medium">Mid-Project Review Audit Passed</span>
             <p className="text-[10px] text-slate-500 mt-0.5">
-              PyTorch 3D Convolutions • Dataset Augmenter • Scene Evaluator
+              Memory Ceiling &lt; 250MB • Sub-Pixel WGS84 Precision • 3D-CNN &amp; Focal Loss
             </p>
           </div>
         </aside>

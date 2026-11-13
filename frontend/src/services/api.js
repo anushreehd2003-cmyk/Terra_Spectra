@@ -64,6 +64,17 @@ export const apiService = {
     const response = await apiClient.post('/model/predict-scene');
     return response.data;
   },
+
+  // Mid-Project Review Audit & Deck.gl Heatmap API (Day 5)
+  async getFarmHeatmap() {
+    const response = await apiClient.get('/farm/heatmap');
+    return response.data;
+  },
+
+  async getMidProjectReviewAudit() {
+    const response = await apiClient.get('/audit/mid-project-review');
+    return response.data;
+  },
 };
 
 export default apiService;

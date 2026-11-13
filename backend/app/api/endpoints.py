@@ -16,6 +16,8 @@ from app.utils.spectral_physics import (
 from app.utils.cube_simulator import HyperspectralCubeSimulator
 from app.pipeline.spectral_reduction import SpectralDimensionalityReducer
 from app.pipeline.ingestion import HyperspectralIngestionPipeline
+from app.pipeline.georeference import AffineGeoTransform, GeoreferencedHeatmapBuilder
+from app.utils.profiler import SystemMemoryProfiler, GISCoordinateAuditor
 from app.models.spatial_spectral_cnn import SpatialSpectralCNN3D
 from app.models.trainer import DiseaseForecastingTrainer
 from app.models.dataset import create_hyperspectral_dataloader
@@ -272,7 +274,7 @@ def trigger_simulation(seed: Optional[int] = None, foci: int = 3):
 
 
 # =====================================================================
-# 3D-CNN Model Architecture, Training, and Inference Endpoints (Day 3/4)
+# 3D-CNN Model Architecture, Training, and Inference Endpoints
 # =====================================================================
 
 
@@ -368,4 +370,59 @@ def predict_scene_risk():
             [round(float(risk_map[r, c]), 3) for c in range(0, W, max(1, W // 4))]
             for r in range(0, H, max(1, H // 4))
         ],
+    }
+
+
+# =====================================================================
+# Mid-Project Review Audit & Deck.gl Heatmap Endpoints (Day 5)
+# =====================================================================
+
+
+@router.get("/farm/heatmap")
+def get_farm_heatmap():
+    """Return Deck.gl points and georeferenced GeoJSON polygon cells with RGBA color mapping."""
+    scene = get_or_create_scene()
+    reducer = get_or_create_reducer()
+    trainer = get_or_create_trainer()
+
+    reduced_cube = reducer.transform(scene["cube"])
+    risk_map = trainer.predict_full_scene(reduced_cube, patch_size=16, stride=8)
+
+    H, W = risk_map.shape
+    transform = AffineGeoTransform(height_px=H, width_px=W)
+    builder = GeoreferencedHeatmapBuilder(transform)
+
+    deckgl_points = builder.build_deckgl_points(risk_map)
+    geojson_cells = builder.build_geojson_cells(risk_map)
+
+    return {
+        "status": "success",
+        "farm_name": settings.FARM_NAME,
+        "crs": "EPSG:4326 (WGS84)",
+        "bounds": [transform.min_lon, transform.min_lat, transform.max_lon, transform.max_lat],
+        "total_points": len(deckgl_points),
+        "deckgl_points": deckgl_points,
+        "geojson_cells": geojson_cells,
+    }
+
+
+@router.get("/audit/mid-project-review")
+def get_mid_project_review_audit():
+    """Run full Mid-Project Review Audit: memory profiling, latency benchmarks, and GIS validation."""
+    mem_audit = SystemMemoryProfiler.profile_pipeline_execution(height=32, width=32, pca_components=settings.PCA_COMPONENTS)
+    gis_audit = GISCoordinateAuditor.audit_coordinates(height=32, width=32)
+
+    overall_pass = (mem_audit["status"] == "PASS") and (gis_audit["status"] == "PASS")
+
+    return {
+        "audit_name": "TerraSpectra Mid-Project Review Audit",
+        "overall_verdict": "PASS" if overall_pass else "WARN",
+        "memory_profiling": mem_audit,
+        "gis_coordinate_validation": gis_audit,
+        "compliance": {
+            "edge_ram_budget_under_250mb": mem_audit["memory"]["is_memory_safe"],
+            "sub_pixel_geospatial_precision": gis_audit["sub_pixel_precision"],
+            "wgs84_boundary_containment": gis_audit["corners_contained"],
+            "vram_compression_savings_pct": mem_audit["compression_savings"]["vram_saved_pct"],
+        },
     }

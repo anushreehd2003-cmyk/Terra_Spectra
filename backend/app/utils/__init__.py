@@ -1,4 +1,4 @@
-"""Utilities Package (Synthetic Data Generator, Spectral Physics Models)."""
+"""Utilities Package (Synthetic Data Generator, Spectral Physics Models, Profiler)."""
 
 from app.utils.spectral_physics import (
     generate_wavelength_grid,
@@ -8,6 +8,7 @@ from app.utils.spectral_physics import (
     get_soil_signature,
 )
 from app.utils.cube_simulator import HyperspectralCubeSimulator
+from app.utils.profiler import SystemMemoryProfiler, GISCoordinateAuditor
 
 __all__ = [
     "generate_wavelength_grid",
@@ -16,4 +17,6 @@ __all__ = [
     "get_symptomatic_necrotic_signature",
     "get_soil_signature",
     "HyperspectralCubeSimulator",
+    "SystemMemoryProfiler",
+    "GISCoordinateAuditor",
 ]

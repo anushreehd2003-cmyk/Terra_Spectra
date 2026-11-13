@@ -218,3 +218,4 @@ class DiseaseForecastingTrainer:
         self.model.load_state_dict(checkpoint["model_state_dict"])
         self.optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
         self.best_f1 = checkpoint.get("best_f1", 0.0)
+
