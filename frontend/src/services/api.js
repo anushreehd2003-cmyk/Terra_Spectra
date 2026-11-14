@@ -65,7 +65,7 @@ export const apiService = {
     return response.data;
   },
 
-  // Mid-Project Review Audit & Deck.gl Heatmap API (Day 5)
+  // Mid-Project Review Audit & Deck.gl Heatmap API
   async getFarmHeatmap() {
     const response = await apiClient.get('/farm/heatmap');
     return response.data;
@@ -73,6 +73,22 @@ export const apiService = {
 
   async getMidProjectReviewAudit() {
     const response = await apiClient.get('/audit/mid-project-review');
+    return response.data;
+  },
+
+  // Vision Transformer & Benchmarking API (Day 6)
+  async getHybridArchitecture() {
+    const response = await apiClient.get('/model/hybrid-architecture');
+    return response.data;
+  },
+
+  async getSpectralAttentionMatrix() {
+    const response = await apiClient.get('/model/spectral-attention');
+    return response.data;
+  },
+
+  async getModelBenchmark() {
+    const response = await apiClient.get('/model/benchmark');
     return response.data;
   },
 };
