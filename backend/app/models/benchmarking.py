@@ -137,3 +137,4 @@ class ModelBenchmarker:
                 "edge_friendly_parameters": params_hybrid < 200000,
             },
         }
+

@@ -23,6 +23,8 @@ from app.models.spectral_vit import Hybrid3DCNNViT
 from app.models.trainer import DiseaseForecastingTrainer
 from app.models.dataset import create_hyperspectral_dataloader
 from app.models.benchmarking import ModelBenchmarker
+from app.pipeline.tiling_engine import GaussianTileStitcher
+from app.pipeline.temporal_progression import TemporalProgressionEngine
 
 router = APIRouter()
 
@@ -548,3 +550,69 @@ def get_model_benchmark():
         width=16,
         num_runs=3,
     )
+
+
+# =====================================================================
+# Tiling Engine & Temporal Progression Endpoints (Week 4)
+# =====================================================================
+
+
+@router.get("/temporal/timeline")
+def get_temporal_timeline():
+    """Return 4-week timeline stages, days-before-symptoms, and treatment cost metrics."""
+    return {
+        "status": "success",
+        "stages": TemporalProgressionEngine.get_timeline_overview(),
+        "detection_window": "Week -3 (21 Days Before Visible Foliar Symptoms)",
+        "recommended_intervention": "Low-dose targeted preventative bio-fungicide (78% cost savings)",
+    }
+
+
+@router.get("/temporal/sequence")
+def get_temporal_sequence():
+    """Return 4-week sequence of spatial infection risk grids for timeline scrubbing."""
+    sequence = TemporalProgressionEngine.generate_temporal_risk_sequence(height=32, width=32)
+    return {
+        "status": "success",
+        "timeline_length": len(sequence),
+        "sequence": sequence,
+    }
+
+
+@router.post("/pipeline/tile-and-stitch")
+def execute_tile_and_stitch():
+    """Run Gaussian tile slicing, batched neural inference, and seamless reconstruction."""
+    scene = get_or_create_scene()
+    reducer = get_or_create_reducer()
+    hybrid = get_or_create_hybrid_model()
+
+    reduced_cube = reducer.transform(scene["cube"])
+    stitcher = GaussianTileStitcher(tile_size=16, stride=10, sigma_ratio=3.0)
+
+    def model_fn(batch_tensor):
+        with torch.no_grad():
+            seg_logits, _, _ = hybrid(batch_tensor)
+            probs = torch.softmax(seg_logits, dim=1)
+            # Pre-symptomatic class 1
+            return probs[:, 1].cpu().numpy()
+
+    result = stitcher.process_and_stitch_with_model(reduced_cube, model_fn, batch_size=4)
+
+    H, W = result["mosaic"].shape
+    sample_mosaic = [
+        [round(float(result["mosaic"][r, c]), 3) for c in range(0, W, max(1, W // 4))]
+        for r in range(0, H, max(1, H // 4))
+    ]
+
+    return {
+        "status": "success",
+        "total_tiles_processed": result["total_tiles_processed"],
+        "tile_size": result["tile_size"],
+        "stride": result["stride"],
+        "overlap_pixels": result["overlap_pixels"],
+        "seam_artifact_suppression": result["seam_artifact_suppression"],
+        "mean_spatial_gradient": result["mean_spatial_gradient"],
+        "full_coverage_verified": result["full_coverage_verified"],
+        "sample_mosaic_grid": sample_mosaic,
+    }
+

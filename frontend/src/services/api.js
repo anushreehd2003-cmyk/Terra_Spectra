@@ -76,7 +76,7 @@ export const apiService = {
     return response.data;
   },
 
-  // Vision Transformer & Benchmarking API (Day 6)
+  // Vision Transformer & Benchmarking API
   async getHybridArchitecture() {
     const response = await apiClient.get('/model/hybrid-architecture');
     return response.data;
@@ -89,6 +89,22 @@ export const apiService = {
 
   async getModelBenchmark() {
     const response = await apiClient.get('/model/benchmark');
+    return response.data;
+  },
+
+  // Tiling Engine & Temporal Progression API (Week 4)
+  async getTemporalTimeline() {
+    const response = await apiClient.get('/temporal/timeline');
+    return response.data;
+  },
+
+  async getTemporalSequence() {
+    const response = await apiClient.get('/temporal/sequence');
+    return response.data;
+  },
+
+  async executeTileAndStitch() {
+    const response = await apiClient.post('/pipeline/tile-and-stitch');
     return response.data;
   },
 };

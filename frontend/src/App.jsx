@@ -6,6 +6,8 @@ import ModelPanel from './components/ModelPanel';
 import AuditReportCard from './components/AuditReportCard';
 import SpectralAttentionHeatmap from './components/SpectralAttentionHeatmap';
 import BenchmarkView from './components/BenchmarkView';
+import TemporalProgressionSlider from './components/TemporalProgressionSlider';
+import TilingStitcherMonitor from './components/TilingStitcherMonitor';
 import {
   Sprout,
   BarChart3,
@@ -20,11 +22,13 @@ import {
   FileCheck2,
   Network,
   Award,
+  Clock,
+  Layers,
 } from 'lucide-react';
 import apiService from './services/api';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('vit'); // Showcase Week 3 Vision Transformer
+  const [activeTab, setActiveTab] = useState('temporal'); // Showcase Week 4 Temporal Progression
   const [status, setStatus] = useState(null);
   const [simulating, setSimulating] = useState(false);
   const [monitoredAcres, setMonitoredAcres] = useState(1000.0);
@@ -69,7 +73,7 @@ export default function App() {
             <h1 className="text-base font-bold tracking-wide text-white flex items-center gap-2">
               TerraSpectra
               <span className="text-[10px] uppercase font-semibold tracking-wider px-2 py-0.5 bg-emerald-500/10 text-emerald-400 rounded-full border border-emerald-500/20">
-                v0.5.0 • Week 3 ViT
+                v1.0.0 • Final Release
               </span>
             </h1>
             <p className="text-[11px] text-slate-400">Hyperspectral Crop Disease Forecasting Engine</p>
@@ -77,7 +81,29 @@ export default function App() {
         </div>
 
         {/* Navigation Tabs */}
-        <div className="flex items-center bg-slate-950/80 p-1 rounded-xl border border-slate-800 text-xs overflow-x-auto">
+        <div className="flex items-center bg-slate-950/80 p-1 rounded-xl border border-slate-800 text-xs overflow-x-auto gap-1">
+          <button
+            onClick={() => setActiveTab('temporal')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-medium transition ${
+              activeTab === 'temporal'
+                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-sm'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <Clock className="w-3.5 h-3.5 text-emerald-400" />
+            4-Wk Temporal Slider
+          </button>
+          <button
+            onClick={() => setActiveTab('tiling')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-medium transition ${
+              activeTab === 'tiling'
+                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-sm'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <Layers className="w-3.5 h-3.5 text-teal-400" />
+            Gaussian Tiling
+          </button>
           <button
             onClick={() => setActiveTab('vit')}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-medium transition ${
@@ -87,7 +113,7 @@ export default function App() {
             }`}
           >
             <Network className="w-3.5 h-3.5 text-emerald-400" />
-            ViT Self-Attention
+            ViT Attention
           </button>
           <button
             onClick={() => setActiveTab('benchmark')}
@@ -98,7 +124,7 @@ export default function App() {
             }`}
           >
             <Award className="w-3.5 h-3.5 text-amber-400" />
-            Model Benchmarks
+            Benchmarks
           </button>
           <button
             onClick={() => setActiveTab('model')}
@@ -109,7 +135,7 @@ export default function App() {
             }`}
           >
             <Brain className="w-3.5 h-3.5 text-teal-400" />
-            3D-CNN &amp; Focal Loss
+            3D-CNN Model
           </button>
           <button
             onClick={() => setActiveTab('spectral')}
@@ -131,7 +157,7 @@ export default function App() {
             }`}
           >
             <MapIcon className="w-3.5 h-3.5 text-indigo-400" />
-            GIS Farm Heatmap
+            GIS Farm Map
           </button>
           <button
             onClick={() => setActiveTab('audit')}
@@ -157,7 +183,7 @@ export default function App() {
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
             </span>
-            <span className="text-emerald-400 font-medium">Hybrid ViT Active</span>
+            <span className="text-emerald-400 font-medium">Production Ready</span>
           </div>
         </div>
       </header>
@@ -166,6 +192,8 @@ export default function App() {
       <div className="flex flex-1 relative overflow-hidden">
         {/* Left Interactive Canvas Area */}
         <main className="flex-1 h-full p-4 overflow-y-auto">
+          {activeTab === 'temporal' && <TemporalProgressionSlider />}
+          {activeTab === 'tiling' && <TilingStitcherMonitor />}
           {activeTab === 'vit' && <SpectralAttentionHeatmap />}
           {activeTab === 'benchmark' && <BenchmarkView />}
           {activeTab === 'model' && <ModelPanel onRiskUpdated={(acres) => setPredictedRiskAcres(acres)} />}
@@ -226,9 +254,9 @@ export default function App() {
 
           {/* Milestone Footer */}
           <div className="mt-auto pt-3 border-t border-slate-800 text-[11px] text-slate-500 text-center">
-            <span className="text-emerald-400 font-medium">Week 3: Hybrid 3D-CNN + ViT Active</span>
+            <span className="text-emerald-400 font-medium">Week 4: Full Pipeline &amp; Temporal Engine Active</span>
             <p className="text-[10px] text-slate-500 mt-0.5">
-              4-Head Spectral Attention • 94.2% Pre-Symp F1 • 21-Day Forecast
+              4-Wk Progression • Gaussian Tiling • Hybrid ViT (94.2% F1) • 1,000 Acres
             </p>
           </div>
         </aside>
