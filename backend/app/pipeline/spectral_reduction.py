@@ -98,6 +98,12 @@ class SpectralDimensionalityReducer:
             "cumulative_variance_explained": round(float(self.cumulative_variance_ratio_[-1]), 4),
         }
 
+    def get_explained_variance_ratio(self) -> float:
+        """Return cumulative explained variance ratio in [0.0, 1.0]."""
+        if not self.is_fitted:
+            raise RuntimeError("Reducer must be fitted first.")
+        return float(self.cumulative_variance_ratio_[-1])
+
     def get_metrics(self) -> Dict[str, Any]:
         """Return explained variance ratios, cumulative variance, and component count."""
         if not self.is_fitted:

@@ -138,3 +138,4 @@ class TemporalProgressionEngine:
             })
 
         return sequence
+

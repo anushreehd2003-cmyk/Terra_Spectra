@@ -179,3 +179,4 @@ class GaussianTileStitcher:
             "mean_spatial_gradient": round(mean_edge_gradient, 4),
             "full_coverage_verified": bool(np.all(stitched_mosaic >= 0.0)),
         }
+

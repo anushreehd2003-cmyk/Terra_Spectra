@@ -1,6 +1,6 @@
 """FastAPI base, data pipeline, and 3D-CNN + ViT ML endpoints for TerraSpectra."""
 
-from fastapi import APIRouter, Query, HTTPException
+from fastapi import APIRouter, Query, HTTPException, Response
 from typing import Dict, Any, List, Optional
 import numpy as np
 import torch
@@ -25,6 +25,8 @@ from app.models.dataset import create_hyperspectral_dataloader
 from app.models.benchmarking import ModelBenchmarker
 from app.pipeline.tiling_engine import GaussianTileStitcher
 from app.pipeline.temporal_progression import TemporalProgressionEngine
+from app.pipeline.geotiff_exporter import PrescriptionMapGenerator, GeoTIFFExporter
+from app.utils.final_review import ExecutiveFinalReviewAuditor
 
 router = APIRouter()
 
@@ -615,4 +617,73 @@ def execute_tile_and_stitch():
         "full_coverage_verified": result["full_coverage_verified"],
         "sample_mosaic_grid": sample_mosaic,
     }
+
+
+# =====================================================================
+# Final Project Review & GeoTIFF VRA Prescription Endpoints
+# =====================================================================
+
+
+@router.get("/audit/final-review")
+def get_final_review_audit():
+    """Execute and return the comprehensive Executive Final Review Audit report."""
+    report = ExecutiveFinalReviewAuditor.run_full_final_review()
+    return report
+
+
+@router.get("/prescription/summary")
+def get_prescription_summary():
+    """Return Variable Rate Application (VRA) zones, chemical rates, and economic savings."""
+    scene = get_or_create_scene()
+    risk_map = scene["risk_map"]
+    generator = PrescriptionMapGenerator(total_acres=settings.FARM_TOTAL_ACRES)
+    presc = generator.compute_prescription(risk_map)
+
+    H, W = presc["dosage_map"].shape
+    sample_dosage_grid = [
+        [round(float(presc["dosage_map"][r, c]), 2) for c in range(0, W, max(1, W // 4))]
+        for r in range(0, H, max(1, H // 4))
+    ]
+
+    return {
+        "status": "success",
+        "farm_name": settings.FARM_NAME,
+        "total_monitored_acres": presc["total_monitored_acres"],
+        "presymptomatic_hotspot_acres": presc["presymptomatic_hotspot_acres"],
+        "zones": presc["zones"],
+        "economic_impact": presc["economic_impact"],
+        "sample_dosage_grid": sample_dosage_grid,
+        "lead_time": "21 Days Before Visible Foliar Symptoms",
+        "tractor_guidance_format": "GeoTIFF EPSG:4326 (WGS84)",
+    }
+
+
+@router.get("/export/prescription-geotiff")
+def export_prescription_geotiff():
+    """Export the multi-band georeferenced GeoTIFF prescription raster for GIS / tractor guidance."""
+    scene = get_or_create_scene()
+    risk_map = scene["risk_map"]
+
+    generator = PrescriptionMapGenerator(total_acres=settings.FARM_TOTAL_ACRES)
+    presc = generator.compute_prescription(risk_map)
+
+    exporter = GeoTIFFExporter(transform=AffineGeoTransform())
+    tiff_bytes, meta = exporter.export_prescription_geotiff(
+        risk_map=risk_map,
+        dosage_map=presc["dosage_map"],
+        zone_map=presc["zone_map"],
+    )
+
+    filename = "terraspectra_prescription_map_epsg4326.tif"
+    headers = {
+        "Content-Disposition": f'attachment; filename="{filename}"',
+        "X-CRS": meta["crs"],
+        "X-Farm": settings.FARM_NAME,
+        "X-Bands": str(meta["dimensions"]["bands"]),
+        "X-Savings-Pct": str(presc["economic_impact"]["savings_pct"]),
+        "X-Hotspot-Acres": str(presc["presymptomatic_hotspot_acres"]),
+    }
+
+    return Response(content=tiff_bytes, media_type="image/tiff", headers=headers)
+
 

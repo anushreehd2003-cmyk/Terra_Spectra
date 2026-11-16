@@ -1,4 +1,4 @@
-"""Utilities Package (Synthetic Data Generator, Spectral Physics Models, Profiler)."""
+"""Utilities Package (Synthetic Data Generator, Spectral Physics Models, Profiler, Final Review)."""
 
 from app.utils.spectral_physics import (
     generate_wavelength_grid,
@@ -9,6 +9,7 @@ from app.utils.spectral_physics import (
 )
 from app.utils.cube_simulator import HyperspectralCubeSimulator
 from app.utils.profiler import SystemMemoryProfiler, GISCoordinateAuditor
+from app.utils.final_review import ExecutiveFinalReviewAuditor
 
 __all__ = [
     "generate_wavelength_grid",
@@ -19,4 +20,5 @@ __all__ = [
     "HyperspectralCubeSimulator",
     "SystemMemoryProfiler",
     "GISCoordinateAuditor",
+    "ExecutiveFinalReviewAuditor",
 ]
