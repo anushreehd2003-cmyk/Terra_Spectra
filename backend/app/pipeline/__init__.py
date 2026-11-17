@@ -6,6 +6,7 @@ from app.pipeline.georeference import AffineGeoTransform, GeoreferencedHeatmapBu
 from app.pipeline.tiling_engine import GaussianTileStitcher
 from app.pipeline.temporal_progression import TemporalProgressionEngine
 from app.pipeline.geotiff_exporter import PrescriptionMapGenerator, GeoTIFFExporter
+from app.pipeline.disease_spread import FungalSpreadCA, EnvironmentalConditions
 
 __all__ = [
     "SpectralDimensionalityReducer",
@@ -16,4 +17,6 @@ __all__ = [
     "TemporalProgressionEngine",
     "PrescriptionMapGenerator",
     "GeoTIFFExporter",
+    "FungalSpreadCA",
+    "EnvironmentalConditions",
 ]

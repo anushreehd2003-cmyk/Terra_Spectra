@@ -658,6 +658,73 @@ def get_prescription_summary():
     }
 
 
+@router.get("/attribution/spectral-bands")
+def get_spectral_band_attribution(target_class: int = 1):
+    """Return per-band GradCAM saliency scores, regional summary, and top diagnostic bands."""
+    import torch
+    from app.models.spectral_attribution import SpectralBandAttributionAnalyzer
+
+    scene = get_or_create_scene()
+    cube = scene["cube"]
+    reducer = get_or_create_reducer()
+    model = get_or_create_hybrid_model()
+
+    # Fit PCA reducer if needed and reduce the cube
+    H, W, C = cube.shape
+    flat = cube.reshape(-1, C)
+    if not hasattr(reducer, '_fitted') or not reducer._fitted:
+        reducer.fit_transform(flat)
+
+    reduced_flat = reducer.transform(flat)
+    D = reduced_flat.shape[1]
+    reduced_cube = reduced_flat.reshape(H, W, D)
+
+    analyzer = SpectralBandAttributionAnalyzer(model=model, pca_reducer=reducer)
+    report = analyzer.compute_full_attribution_report(
+        reduced_cube=reduced_cube,
+        target_class=max(0, min(2, target_class)),
+    )
+
+    # Trim per_band_scores to 50 entries for compact JSON
+    full_bands = report.get("per_band_scores", [])
+    step = max(1, len(full_bands) // 50)
+    report["per_band_scores_sampled"] = full_bands[::step]
+    del report["per_band_scores"]
+
+    return {"status": "success", "farm_name": settings.FARM_NAME, **report}
+
+
+@router.get("/simulation/disease-spread")
+def get_disease_spread_simulation(total_days: int = 28):
+    """Run 28-day fungal spread CA simulation and return economic impact + per-day summary."""
+    from app.pipeline.disease_spread import FungalSpreadCA
+
+    ca = FungalSpreadCA(height=32, width=32)
+    result = ca.run_full_simulation(total_days=max(7, min(60, total_days)))
+
+    # Slim daily_progression: keep only day index + pixel counts (omit risk_map_sample)
+    slim_progression = [
+        {
+            "day": snap["day"],
+            "pixel_counts": snap["pixel_counts"],
+            "acreage": snap["acreage"],
+        }
+        for snap in result["daily_progression"]
+    ]
+
+    return {
+        "status": "success",
+        "farm_name": result["farm"],
+        "total_acres": result["total_acres"],
+        "total_days_simulated": result["total_days_simulated"],
+        "final_state": result["final_state"],
+        "economic_impact": result["economic_impact"],
+        "daily_progression": slim_progression,
+        "first_day_snapshot": result["daily_progression"][0] if result["daily_progression"] else {},
+        "last_day_snapshot": result["daily_progression"][-1] if result["daily_progression"] else {},
+    }
+
+
 @router.get("/export/prescription-geotiff")
 def export_prescription_geotiff():
     """Export the multi-band georeferenced GeoTIFF prescription raster for GIS / tractor guidance."""

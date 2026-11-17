@@ -6,6 +6,7 @@ from app.models.focal_loss import FocalLoss
 from app.models.dataset import HyperspectralPatchDataset, create_hyperspectral_dataloader
 from app.models.trainer import DiseaseForecastingTrainer
 from app.models.benchmarking import Baseline2DCNN, ModelBenchmarker
+from app.models.spectral_attribution import SpectralGradCAM, SpectralBandAttributionAnalyzer
 
 __all__ = [
     "SpatialSpectralCNN3D",
@@ -17,4 +18,6 @@ __all__ = [
     "create_hyperspectral_dataloader",
     "DiseaseForecastingTrainer",
     "ModelBenchmarker",
+    "SpectralGradCAM",
+    "SpectralBandAttributionAnalyzer",
 ]
