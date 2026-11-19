@@ -46,13 +46,19 @@ def get_or_create_scene() -> Dict[str, Any]:
 
 
 def get_or_create_reducer() -> SpectralDimensionalityReducer:
-    global _CACHED_REDUCER
-    if _CACHED_REDUCER is None or not _CACHED_REDUCER.is_fitted:
-        scene = get_or_create_scene()
-        reducer = SpectralDimensionalityReducer(n_components=settings.PCA_COMPONENTS)
-        reducer.fit(scene["cube"])
-        _CACHED_REDUCER = reducer
-    return _CACHED_REDUCER
+    """Create a fresh SpectralDimensionalityReducer fitted on the current scene.
+
+    The previous implementation cached a reducer which could become stale if the
+    underlying scene changed or if the reducer was inadvertently fitted on a
+    reduced‑dimensionality cube, leading to a mismatch between the expected
+    number of features (PCA_COMPONENTS) and the actual input dimensionality
+    (NUM_SPECTRAL_BANDS). By always constructing a new reducer for the current
+    scene we guarantee compatibility across all endpoints and unit tests.
+    """
+    scene = get_or_create_scene()
+    reducer = SpectralDimensionalityReducer(n_components=settings.PCA_COMPONENTS)
+    reducer.fit(scene["cube"])
+    return reducer
 
 
 def get_or_create_trainer() -> DiseaseForecastingTrainer:
@@ -669,15 +675,16 @@ def get_spectral_band_attribution(target_class: int = 1):
     reducer = get_or_create_reducer()
     model = get_or_create_hybrid_model()
 
-    # Fit PCA reducer if needed and reduce the cube
+    # Fit PCA reducer on the raw cube and reduce the data
     H, W, C = cube.shape
     flat = cube.reshape(-1, C)
-    if not hasattr(reducer, '_fitted') or not reducer._fitted:
-        reducer.fit_transform(flat)
-
-    reduced_flat = reducer.transform(flat)
+    # Fit and transform to obtain reduced representation with correct dimensionality
+    reduced_flat = reducer.fit_transform(flat)
     D = reduced_flat.shape[1]
+    # Reshape back to spatial dimensions (H, W, D)
     reduced_cube = reduced_flat.reshape(H, W, D)
+    # Reorder to (D, H, W) as expected by the model
+    reduced_cube = np.moveaxis(reduced_cube, -1, 0)
 
     analyzer = SpectralBandAttributionAnalyzer(model=model, pca_reducer=reducer)
     report = analyzer.compute_full_attribution_report(

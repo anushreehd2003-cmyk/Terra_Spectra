@@ -161,6 +161,21 @@ class SpectralBandAttributionAnalyzer:
         b_min, b_max = per_band_scores.min(), per_band_scores.max()
         if b_max > b_min:
             per_band_scores = (per_band_scores - b_min) / (b_max - b_min)
+        # Ensure per_band_scores matches the full wavelength count
+        if per_band_scores.shape[0] != self.wavelengths.shape[0]:
+            # Interpolate to original band count (e.g., 204) if reducer returned fewer components
+            target_len = self.wavelengths.shape[0]
+            original_len = per_band_scores.shape[0]
+            per_band_scores = np.interp(
+                np.linspace(0, original_len - 1, target_len),
+                np.arange(original_len),
+                per_band_scores,
+            )
+        else:
+            # Normalize to [0, 1]
+            if b_max > b_min:
+                per_band_scores = (per_band_scores - b_min) / (b_max - b_min)
+
 
         # --- 3. Regional aggregation ---
         regional_summary = {}

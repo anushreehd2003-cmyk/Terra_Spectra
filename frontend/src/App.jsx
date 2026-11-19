@@ -4,6 +4,7 @@ import SpectralInspector from './components/SpectralInspector';
 import PCAMetricsCard from './components/PCAMetricsCard';
 import ModelPanel from './components/ModelPanel';
 import AuditReportCard from './components/AuditReportCard';
+import VRAPrescriptionDashboard from './components/VRAPrescriptionDashboard';
 import SpectralAttentionHeatmap from './components/SpectralAttentionHeatmap';
 import BenchmarkView from './components/BenchmarkView';
 import TemporalProgressionSlider from './components/TemporalProgressionSlider';
@@ -170,6 +171,18 @@ export default function App() {
             <FileCheck2 className="w-3.5 h-3.5 text-emerald-400" />
             Audit Report
           </button>
+          <button
+            onClick={() => setActiveTab('prescription')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-medium transition ${
+              activeTab === 'prescription'
+                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-sm'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <FileCheck2 className="w-3.5 h-3.5 text-emerald-400" />
+            VRA Prescription
+          </button>
+          </button>
         </div>
 
         {/* Status Indicators */}
@@ -200,6 +213,7 @@ export default function App() {
           {activeTab === 'spectral' && <SpectralInspector />}
           {activeTab === 'map' && <MapView />}
           {activeTab === 'audit' && <AuditReportCard />}
+          {activeTab === 'prescription' && <VRAPrescriptionDashboard />}
         </main>
 
         {/* Right Telemetry & PCA Sidebar */}
